@@ -88,5 +88,5 @@ verificarEventos();
 
 // Cron: 3x ao dia (0h, 8h, 16h)
 // const job = new CronJob("0 0,8,16 * * *", verificarEventos);
-const job = new CronJob("0 * * * *", verificarEventos);
-job.start();
+// const job = new CronJob("0 * * * *", verificarEventos);
+// job.start();
