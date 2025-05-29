@@ -1,6 +1,5 @@
 import axios from "axios";
-import { CronJob } from "cron";
-import fs from "fs";
+import { eventoJaVerificado, salvarEventoVerificado, listarEventosVerificados } from './db';
 
 interface EventoSympla {
   id: number;
@@ -8,24 +7,6 @@ interface EventoSympla {
   location: object;
   start_date_formats: object;
   url: string;
-}
-
-const eventosCachePath = "./eventos_verificados.json";
-
-function lerEventosVerificados(): number[] {
-  if (fs.existsSync(eventosCachePath)) {
-    return JSON.parse(fs.readFileSync(eventosCachePath, "utf-8"));
-  }
-  return [];
-}
-
-function salvarEventosVerificados(lista: number[]): void {
-  try {
-    fs.writeFileSync(eventosCachePath, JSON.stringify(lista, null, 2));
-    console.log("📝 Evento salvo!");
-  } catch (error) {
-    console.error("❌ Erro ao salvar evento:", (error as Error).message);
-  }
 }
 
 async function enviarTelegram(mensagem: string): Promise<void> {
@@ -46,7 +27,6 @@ async function enviarTelegram(mensagem: string): Promise<void> {
 }
 
 async function verificarEventos(): Promise<void> {
-  const verificados = lerEventosVerificados();
 
   try {
     const res = await axios.post("https://www.sympla.com.br/api/v1/search", {
@@ -68,25 +48,22 @@ async function verificarEventos(): Promise<void> {
         evento.name
           .toLowerCase()
           .includes(process.env.EVENTO_CHAVE!.toLocaleLowerCase()) &&
-        !verificados.includes(evento.id)
+        !eventoJaVerificado(evento.id)
       ) {
         const mensagem = `🎉 Novo evento encontrado: ${evento.name}\n🔗 ${evento.url}`;
         // console.log(mensagem);
 
         await enviarTelegram(mensagem);
-        verificados.push(evento.id);
+        salvarEventoVerificado(evento.id, evento.name, evento.url);
+        console.log("✅ Evento salvo!");
       }
     }
 
-    salvarEventosVerificados(verificados);
   } catch (error) {
     console.error("❌ Erro na consulta Sympla:", (error as Error).message);
   }
+
+  console.log(listarEventosVerificados());
 }
 
 verificarEventos();
-
-// Cron: 3x ao dia (0h, 8h, 16h)
-// const job = new CronJob("0 0,8,16 * * *", verificarEventos);
-// const job = new CronJob("0 * * * *", verificarEventos);
-// job.start();
