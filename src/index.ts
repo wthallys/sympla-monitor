@@ -20,7 +20,12 @@ function lerEventosVerificados(): number[] {
 }
 
 function salvarEventosVerificados(lista: number[]): void {
-  fs.writeFileSync(eventosCachePath, JSON.stringify(lista, null, 2));
+  try {
+    fs.writeFileSync(eventosCachePath, JSON.stringify(lista, null, 2));
+    console.log("📝 Evento salvo!");
+  } catch (error) {
+    console.error("❌ Erro ao salvar evento:", (error as Error).message);
+  }
 }
 
 async function enviarTelegram(mensagem: string): Promise<void> {
@@ -60,7 +65,9 @@ async function verificarEventos(): Promise<void> {
 
     for (const evento of eventos) {
       if (
-        evento.name.toLowerCase().includes(process.env.EVENTO_CHAVE!.toLocaleLowerCase()) &&
+        evento.name
+          .toLowerCase()
+          .includes(process.env.EVENTO_CHAVE!.toLocaleLowerCase()) &&
         !verificados.includes(evento.id)
       ) {
         const mensagem = `🎉 Novo evento encontrado: ${evento.name}\n🔗 ${evento.url}`;
