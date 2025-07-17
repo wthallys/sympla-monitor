@@ -29,8 +29,8 @@ async function enviarTelegram(mensagem: string): Promise<void> {
 async function verificarEventos(): Promise<void> {
 
   try {
-    const res = await axios.post("https://www.sympla.com.br/api/v1/search", {
-      service: "/v4/search",
+    const res = await axios.post(process.env.SYMPLA_URL!, {
+      service: process.env.SYMPLA_SERVICE,
       params: {
         only: "name,location,id,start_date_formats,url",
         organizer_id: process.env.ORGANIZER_ID,
