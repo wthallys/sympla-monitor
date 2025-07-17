@@ -1,5 +1,5 @@
 import axios from "axios";
-import { eventoJaVerificado, salvarEventoVerificado, listarEventosVerificados } from './db';
+import { eventoJaVerificado, salvarEventoVerificado, listarEventosVerificados, inicializarTabela } from './db';
 
 interface EventoSympla {
   id: number;
@@ -48,13 +48,13 @@ async function verificarEventos(): Promise<void> {
         evento.name
           .toLowerCase()
           .includes(process.env.EVENTO_CHAVE!.toLocaleLowerCase()) &&
-        !eventoJaVerificado(evento.id)
+        !(await eventoJaVerificado(evento.id))
       ) {
         const mensagem = `🎉 Novo evento encontrado: ${evento.name}\n🔗 ${evento.url}`;
         // console.log(mensagem);
 
         await enviarTelegram(mensagem);
-        salvarEventoVerificado(evento.id, evento.name, evento.url);
+        await salvarEventoVerificado(evento.id, evento.name, evento.url);
         console.log("✅ Evento salvo!");
       }
     }
@@ -66,4 +66,9 @@ async function verificarEventos(): Promise<void> {
   console.log(listarEventosVerificados());
 }
 
-verificarEventos();
+async function main() {
+  await inicializarTabela();
+  await verificarEventos();
+}
+
+main();

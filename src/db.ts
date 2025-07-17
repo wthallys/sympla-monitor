@@ -1,42 +1,57 @@
-import Database from "better-sqlite3";
+import { Pool } from "pg";
 
-console.log("🛠️ Inicializando conexão com o banco de dados...");
-const db = new Database("./data.db");
+console.log("🛠️ Inicializando conexão com PostgreSQL...");
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
 
 export interface EventoVerificado {
-id: number;
-nome: string;
-url: string;
-data_verificado: string;
+  id: number;
+  nome: string;
+  url: string;
+  data_verificado: string;
 }
 
-console.log("📦 Criando tabela 'eventos_verificados' (se não existir)...");
-
-db.prepare(`
-CREATE TABLE IF NOT EXISTS eventos_verificados (
-    id INTEGER PRIMARY KEY,
-    nome TEXT,
-    url TEXT,
-    data_verificado DATETIME DEFAULT CURRENT_TIMESTAMP
-)
-`).run();
-
-console.log("✅ Tabela 'eventos_verificados' pronta.\n");
-
-export function eventoJaVerificado(id: number): boolean {
-  const row = db.prepare(`SELECT 1 FROM eventos_verificados WHERE id = ?`).get(id);
-  return !!row;
+// Inicializa a tabela, se necessário
+export async function inicializarTabela() {
+  console.log("📦 Criando tabela 'eventos_verificados' (se não existir)...");
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS eventos_verificados (
+      id INTEGER PRIMARY KEY,
+      nome TEXT,
+      url TEXT,
+      data_verificado TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  console.log("✅ Tabela 'eventos_verificados' pronta.\n");
 }
 
-export function salvarEventoVerificado(id: number, nome: string, url: string): void {
+export async function eventoJaVerificado(id: number): Promise<boolean> {
+  const res = await pool.query(`SELECT 1 FROM eventos_verificados WHERE id = $1`, [id]);
+  return (res.rowCount ?? 0) > 0;
+}
+
+export async function salvarEventoVerificado(id: number, nome: string, url: string): Promise<void> {
   try {
-    db.prepare(`INSERT OR IGNORE INTO eventos_verificados (id, nome, url) VALUES (?, ?, ?)`).run(id, nome, url);
+    await pool.query(`
+      INSERT INTO eventos_verificados (id, nome, url)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (id) DO NOTHING
+    `, [id, nome, url]);
   } catch (err) {
-    console.error('Erro ao salvar evento:', (err as Error).message);
+    console.error("Erro ao salvar evento:", (err as Error).message);
   }
 }
 
-export function listarEventosVerificados(): EventoVerificado[] {
-  const stmt = db.prepare('SELECT id, nome, url, data_verificado FROM eventos_verificados ORDER BY data_verificado DESC');
-  return stmt.all() as EventoVerificado[];
+export async function listarEventosVerificados(): Promise<EventoVerificado[]> {
+  const res = await pool.query(`
+    SELECT id, nome, url, data_verificado
+    FROM eventos_verificados
+    ORDER BY data_verificado DESC
+  `);
+  return res.rows;
 }
