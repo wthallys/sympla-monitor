@@ -14,9 +14,9 @@ export interface EventoVerificado {
   nome: string;
   url: string;
   data_verificado: string;
+  data_inicio: string | null;
 }
 
-// Inicializa a tabela, se necessário
 export async function inicializarTabela() {
   console.log("📦 Criando tabela 'eventos_verificados' (se não existir)...");
   await pool.query(`
@@ -24,9 +24,15 @@ export async function inicializarTabela() {
       id INTEGER PRIMARY KEY,
       nome TEXT,
       url TEXT,
+      data_inicio TIMESTAMP,
       data_verificado TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  await pool.query(`
+    ALTER TABLE eventos_verificados 
+    ADD COLUMN IF NOT EXISTS data_inicio TIMESTAMP
+    `);
+
   console.log("✅ Tabela 'eventos_verificados' pronta.\n");
 }
 
@@ -35,13 +41,13 @@ export async function eventoJaVerificado(id: number): Promise<boolean> {
   return (res.rowCount ?? 0) > 0;
 }
 
-export async function salvarEventoVerificado(id: number, nome: string, url: string): Promise<void> {
+export async function salvarEventoVerificado(id: number, nome: string, url: string, data_inicio: string | null): Promise<void> {
   try {
     await pool.query(`
-      INSERT INTO eventos_verificados (id, nome, url)
-      VALUES ($1, $2, $3)
+      INSERT INTO eventos_verificados (id, nome, url, data_inicio)
+      VALUES ($1, $2, $3, $4)
       ON CONFLICT (id) DO NOTHING
-    `, [id, nome, url]);
+    `, [id, nome, url, data_inicio]);
   } catch (err) {
     console.error("Erro ao salvar evento:", (err as Error).message);
   }
@@ -49,7 +55,7 @@ export async function salvarEventoVerificado(id: number, nome: string, url: stri
 
 export async function listarEventosVerificados(): Promise<EventoVerificado[]> {
   const res = await pool.query(`
-    SELECT id, nome, url, data_verificado
+    SELECT id, nome, url, data_verificado, data_inicio
     FROM eventos_verificados
     ORDER BY data_verificado DESC
   `);
