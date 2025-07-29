@@ -1,4 +1,4 @@
-name: 🔐 Segurança - npm audit
+name: CI - Testes e Segurança
 
 on:
   push:
@@ -7,7 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  audit:
+  test:
+    name: 🧪 Rodar testes
     runs-on: ubuntu-latest
 
     steps:
@@ -19,11 +20,43 @@ jobs:
         with:
           node-version: '20'
 
-      - name: 📦 Instala dependências
+      - name: ⚡ Cache do npm
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: 📦 Instalar dependências
         run: npm install
 
       - name: 🧪 Rodar testes automatizados
         run: npm test
 
-      - name: 🚨 Verifica vulnerabilidades com audit-ci
+  audit:
+    name: 🔐 Auditoria de segurança
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v3
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: ⚡ Cache do npm
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: 📦 Instalar dependências
+        run: npm install
+
+      - name: 🚨 Verificar vulnerabilidades com audit-ci
         run: npx audit-ci --moderate
